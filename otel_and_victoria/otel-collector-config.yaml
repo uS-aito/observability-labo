@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed  # 詳細なログを出力 (簡易表示なら 'basic')
+  otlphttp/victoria-logs:
+    logs_endpoint: http://vlinsert:9481/insert/opentelemetry/v1/logs
+  otlphttp/victoria-traces:
+    traces_endpoint: http://victoria-traces:10428/insert/opentelemetry/v1/traces
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [debug, otlphttp/victoria-logs]
+    traces:
+      receivers: [otlp]
+      exporters: [debug, otlphttp/victoria-traces]
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]

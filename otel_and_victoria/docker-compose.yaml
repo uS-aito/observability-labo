@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector Service
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+
+  # Java Application with OTel Agent
+  java-app:
+    image: ghcr.io/us-aito/bootstrap_api_demo:v1.0.1
+    container_name: java-app
+    depends_on:
+      - otel-collector
+    environment:
+      # OTLP送信先の設定 (Collectorのサービス名を指定)
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      
+      # ログ、トレース、メトリクスのエクスポーター設定
+      # ここでは全てOTLP経由でCollectorへ送る設定
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      
+      # ログ送信を確実にするための実験的機能フラグ (最新版ではデフォルト有効の場合が多いが念の為記述)
+      - OTEL_INSTRUMENTATION_LOGBACK_APPENDER_ENABLED=true
+      - OTEL_INSTRUMENTATION_LOG4J_APPENDER_ENABLED=true
+    ports:
+      - "8080:8080"
+  
+  vlinsert:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlinsert
+    ports:
+      - 9481:9481
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9481
+      - --loggerFormat=json
+      - --select.disable
+      - --storageNode=vlstorage.:9491
+    depends_on:
+      - vlstorage
+
+  vlstorage:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlstorage
+    ports:
+      - 9491:9491
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9491
+      - --loggerFormat=json
+      - --retentionPeriod=7d
+      - --storageDataPath=/storage
+
+  vlselect:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlselect
+    ports:
+      - 9471:9471
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9471
+      - --insert.disable
+      - --loggerFormat=json
+      - --storageNode=vlstorage.:9491
+    depends_on:
+      - vlstorage
+  
+  vlogscli:
+    image: victoriametrics/vlogscli:v1.43.1
+    container_name: vlogscli
+    entrypoint: ["/bin/sh", "-c", "sleep infinity"]
+
+  victoria-traces:
+    image: victoriametrics/victoria-traces:latest
+    container_name: victoria-traces
+    ports:
+      - 10428:10428
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    # volumes:
+    #   - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=victoriametrics-logs-datasource
+    depends_on:
+      - vlselect
+
+# volumes:
+#   grafana_data:

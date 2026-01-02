@@ -1,0 +1,286 @@
+---
+# Source: victoria-logs-cluster/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels: 
+    app: vlinsert
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlinsert
+  namespace: default
+spec:
+  type: ClusterIP
+  ports: 
+    - name: http
+      port: 9481
+      protocol: TCP
+      targetPort: http
+  selector: 
+    app: vlinsert
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/name: victoria-logs-cluster
+---
+# Source: victoria-logs-cluster/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels: 
+    app: vlselect
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlselect
+  namespace: default
+spec:
+  type: ClusterIP
+  ports: 
+    - name: http
+      port: 9471
+      protocol: TCP
+      targetPort: http
+  selector: 
+    app: vlselect
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/name: victoria-logs-cluster
+---
+# Source: victoria-logs-cluster/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels: 
+    app: vlstorage
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlstorage
+  namespace: default
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports: 
+    - port: 9491
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector: 
+    app: vlstorage
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/name: victoria-logs-cluster
+---
+# Source: victoria-logs-cluster/templates/vlinsert-server.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels: 
+    app: vlinsert
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlinsert
+  namespace: default
+spec:
+  selector:
+    matchLabels: 
+      app: vlinsert
+      app.kubernetes.io/instance: vlc
+      app.kubernetes.io/name: victoria-logs-cluster
+  replicas: 2
+  template:
+    metadata:
+      labels: 
+        app: vlinsert
+        app.kubernetes.io/instance: vlc
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-logs-cluster
+    spec:
+      containers:
+        - name: vlinsert
+          image: victoriametrics/victoria-logs:v1.43.1
+          imagePullPolicy: IfNotPresent
+          securityContext: 
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          args: 
+            - --envflag.enable
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9481
+            - --loggerFormat=json
+            - --select.disable
+            - --storageNode=vlc-victoria-logs-cluster-vlstorage-0.vlc-victoria-logs-cluster-vlstorage.default.svc.cluster.local.:9491
+            - --storageNode=vlc-victoria-logs-cluster-vlstorage-1.vlc-victoria-logs-cluster-vlstorage.default.svc.cluster.local.:9491
+          ports:
+            - name: http
+              containerPort: 9481
+          readinessProbe: 
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe: 
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+      securityContext: 
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 30
+---
+# Source: victoria-logs-cluster/templates/vlselect-server.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels: 
+    app: vlselect
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlselect
+  namespace: default
+spec:
+  selector:
+    matchLabels: 
+      app: vlselect
+      app.kubernetes.io/instance: vlc
+      app.kubernetes.io/name: victoria-logs-cluster
+  replicas: 2
+  template:
+    metadata:
+      labels: 
+        app: vlselect
+        app.kubernetes.io/instance: vlc
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-logs-cluster
+    spec:
+      containers:
+        - name: vlselect
+          image: victoriametrics/victoria-logs:v1.43.1
+          imagePullPolicy: IfNotPresent
+          securityContext: 
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          args: 
+            - --envflag.enable
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9471
+            - --insert.disable
+            - --loggerFormat=json
+            - --storageNode=vlc-victoria-logs-cluster-vlstorage-0.vlc-victoria-logs-cluster-vlstorage.default.svc.cluster.local.:9491
+            - --storageNode=vlc-victoria-logs-cluster-vlstorage-1.vlc-victoria-logs-cluster-vlstorage.default.svc.cluster.local.:9491
+          ports:
+            - name: http
+              containerPort: 9471
+          readinessProbe: 
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe: 
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            tcpSocket:
+              port: http
+            timeoutSeconds: 5
+      securityContext: 
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 60
+---
+# Source: victoria-logs-cluster/templates/vlstorage-server.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels: 
+    app: vlstorage
+    app.kubernetes.io/instance: vlc
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: victoria-logs-cluster
+    app.kubernetes.io/version: v1.43.1
+    helm.sh/chart: victoria-logs-cluster-0.0.24
+  name: vlc-victoria-logs-cluster-vlstorage
+  namespace: default
+spec:
+  serviceName: vlc-victoria-logs-cluster-vlstorage
+  selector:
+    matchLabels: 
+      app: vlstorage
+      app.kubernetes.io/instance: vlc
+      app.kubernetes.io/name: victoria-logs-cluster
+  replicas: 2
+  podManagementPolicy: OrderedReady
+  template:
+    metadata:
+      labels: 
+        app: vlstorage
+        app.kubernetes.io/instance: vlc
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: victoria-logs-cluster
+    spec:
+      containers:
+        - name: vlstorage
+          image: victoriametrics/victoria-logs:v1.43.1
+          imagePullPolicy: IfNotPresent
+          securityContext: 
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          args: 
+            - --envflag.enable
+            - --http.shutdownDelay=15s
+            - --httpListenAddr=:9491
+            - --loggerFormat=json
+            - --retentionPeriod=7d
+            - --storageDataPath=/storage
+          ports:
+            - name: http
+              containerPort: 9491
+          readinessProbe: 
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: vlstorage-volume
+              mountPath: /storage
+      securityContext: 
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 60
+  minReadySeconds: 5
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: vlstorage-volume
+      spec:
+        accessModes: 
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
