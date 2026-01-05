@@ -18,10 +18,10 @@ service:
   pipelines:
     logs:
       receivers: [otlp]
-      exporters: [debug, otlphttp/victoria-logs]
+      exporters: [otlphttp/victoria-logs]
     traces:
       receivers: [otlp]
-      exporters: [debug, otlphttp/victoria-traces]
+      exporters: [otlphttp/victoria-traces]
     metrics:
       receivers: [otlp]
       exporters: [debug]
