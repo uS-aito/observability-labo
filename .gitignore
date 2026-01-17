@@ -45,3 +45,4 @@ terraform.rc
 
 # Mac
 .DS_stores
+log4j_labo/
