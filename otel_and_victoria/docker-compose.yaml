@@ -102,5 +102,18 @@ services:
     depends_on:
       - vlselect
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver 
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - otel-collector
+
 # volumes:
 #   grafana_data:

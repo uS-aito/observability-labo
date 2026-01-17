@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # 自分自身(Prometheus)のメトリクスを取得する基本設定
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

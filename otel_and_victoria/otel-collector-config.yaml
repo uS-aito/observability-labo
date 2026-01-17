@@ -13,6 +13,10 @@ exporters:
     logs_endpoint: http://vlinsert:9481/insert/opentelemetry/v1/logs
   otlphttp/victoria-traces:
     traces_endpoint: http://victoria-traces:10428/insert/opentelemetry/v1/traces
+  prometheusremotewrite:
+    endpoint: "http://prometheus:9090/api/v1/write"
+    tls:
+      insecure: true # 内部ネットワークのためTLS検証を無効化
 
 service:
   pipelines:
@@ -24,4 +28,4 @@ service:
       exporters: [otlphttp/victoria-traces]
     metrics:
       receivers: [otlp]
-      exporters: [debug]
+      exporters: [prometheusremotewrite]
