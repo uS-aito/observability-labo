@@ -26,6 +26,41 @@ resource "aws_iam_role_policy_attachment" "execution_role_policy" {
 }
 
 # ---------------------------------------------
+# Task Role (コンテナプロセス用権限)
+# ---------------------------------------------
+resource "aws_iam_role" "task_role" {
+  name = "${local.prefix}-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+# FireLensがCloudWatch Logsへ書き込むためのポリシー
+resource "aws_iam_role_policy" "task_role_logs_policy" {
+  name = "firelens-cw-logs-write"
+  role = aws_iam_role.task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "*" 
+    }]
+  })
+}
+
+# ---------------------------------------------
 # Log Groups
 # ---------------------------------------------
 resource "aws_cloudwatch_log_group" "app_logs" {
@@ -48,6 +83,7 @@ resource "aws_ecs_task_definition" "main" {
   cpu                      = 512
   memory                   = 1024
   execution_role_arn       = aws_iam_role.execution_role.arn
+  task_role_arn            = aws_iam_role.task_role.arn
 
   container_definitions = jsonencode([
     # 1. Application
