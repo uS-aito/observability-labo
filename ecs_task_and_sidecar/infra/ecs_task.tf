@@ -90,7 +90,6 @@ resource "aws_ecs_task_definition" "main" {
         }
       }
     },
-
     {
       name      = "otel-collector"
       image     = "public.ecr.aws/aws-observability/aws-otel-collector:latest"
