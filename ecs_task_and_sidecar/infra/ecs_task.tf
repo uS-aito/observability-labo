@@ -66,7 +66,6 @@ resource "aws_ecs_task_definition" "main" {
         }
       }
     },
-
     # 2. FireLens (カスタムイメージに変更 & fileタイプに変更)
     {
       name      = "firelens"
@@ -90,11 +89,12 @@ resource "aws_ecs_task_definition" "main" {
         }
       }
     },
+    # 3. OpenTelemetry Collector Sidecar
     {
       name      = "otel-collector"
-      image     = "public.ecr.aws/aws-observability/aws-otel-collector:latest"
+      image     = aws_ecr_repository.otel-collector.repository_url
       essential = true
-      command   = ["--config=/etc/ecs/ecs-default-config.yaml"]
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {

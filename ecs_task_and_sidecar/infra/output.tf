@@ -9,3 +9,7 @@ output "app_repository_url" {
 output "fluentbit_repository_url" {
   value = aws_ecr_repository.custom_fluentbit.repository_url
 }
+
+output "otel_collector_repository_url" {
+  value = aws_ecr_repository.otel-collector.repository_url
+}
