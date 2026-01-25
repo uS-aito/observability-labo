@@ -30,6 +30,7 @@ resource "aws_ecs_service" "main" {
   task_definition = aws_ecs_task_definition.main.arn # 前回のコードで作成したタスク定義を参照
   desired_count   = 1
   launch_type     = "FARGATE"
+  enable_execute_command = true
 
   # ネットワーク設定
   network_configuration {

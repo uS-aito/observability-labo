@@ -10,8 +10,15 @@ exporters:
   debug:
     verbosity: detailed  # 詳細なログを出力 (簡易表示なら 'basic')
 
+processors:
+  resourcedetection:
+    detectors: [env, ecs]
+    timeout: 2s
+    override: false
+
 service:
   pipelines:
     logs:
       receivers: [otlp]
+      processors: [resourcedetection]
       exporters: [debug]

@@ -56,6 +56,15 @@ resource "aws_iam_role_policy" "task_role_logs_policy" {
         "logs:DescribeLogStreams"
       ]
       Resource = "*" 
+    },{
+      "Effect": "Allow",
+      "Action": [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": "*"
     }]
   })
 }
