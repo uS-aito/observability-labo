@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  vlinsert:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlinsert
+    ports:
+      - 9481:9481
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9481
+      - --loggerFormat=json
+      - --select.disable
+      - --storageNode=vlstorage.:9491
+    depends_on:
+      - vlstorage
+
+  vlstorage:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlstorage
+    ports:
+      - 9491:9491
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9491
+      - --loggerFormat=json
+      - --retentionPeriod=7d
+      - --storageDataPath=/storage
+
+  vlselect:
+    image: victoriametrics/victoria-logs:v1.43.1
+    container_name: vlselect
+    ports:
+      - 9471:9471
+    command:
+      - --envflag.enable
+      - --http.shutdownDelay=15s
+      - --httpListenAddr=:9471
+      - --insert.disable
+      - --loggerFormat=json
+      - --storageNode=vlstorage.:9491
+    depends_on:
+      - vlstorage
+  
+  vlogscli:
+    image: victoriametrics/vlogscli:v1.43.1
+    container_name: vlogscli
+    entrypoint: ["/bin/sh", "-c", "sleep infinity"]
+
+  victoria-traces:
+    image: victoriametrics/victoria-traces:latest
+    container_name: victoria-traces
+    ports:
+      - 10428:10428
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    # volumes:
+    #   - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=victoriametrics-logs-datasource
+    depends_on:
+      - vlselect
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver 
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+
+# volumes:
+#   grafana_data:

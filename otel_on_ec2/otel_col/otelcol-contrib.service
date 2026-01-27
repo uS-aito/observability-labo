@@ -1,0 +1,24 @@
+[Unit]
+Description=OpenTelemetry Collector Contrib
+Documentation=https://github.com/open-telemetry/opentelemetry-collector-contrib
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+# インストール方法によりパスが異なる場合があります。rpm/debインストールの場合は通常 /usr/bin/otelcol-contrib です
+ExecStart=/usr/bin/otelcol-contrib --config=/etc/otelcol-contrib/config.yaml
+
+# ログファイル読み取りのため root で実行（セキュリティ要件に応じて変更してください）
+User=root
+Group=root
+
+# プロセスがクラッシュした場合の自動再起動設定
+Restart=on-failure
+RestartSec=5s
+
+# ログ出力先（journalctlで確認可能）
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

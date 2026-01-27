@@ -1,0 +1,55 @@
+receivers:
+  # ホストメトリクスの収集設定
+  hostmetrics:
+    collection_interval: 60s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      filesystem:
+      load:
+      network:
+      paging:
+
+  # ログファイルの収集設定
+  filelog:
+    include:
+      - /var/log/nginx/*.log
+      # 必要に応じて /var/log/*.log のようにワイルドカードも使用可能
+    include_file_name: true # ファイル名を属性として付与
+    operators:
+      - type: move
+        from: attributes["log.file.name"]
+        to: resource["log.file.name"]
+
+processors:
+  # EC2のインスタンスIDやリージョン情報を自動付与
+  resourcedetection:
+    detectors: [env, ec2]
+    timeout: 2s
+    override: false
+
+exporters:
+  debug:
+    verbosity: detailed  # 詳細なログを出力 (簡易表示なら 'basic')
+  otlphttp/victoria-logs:
+    logs_endpoint: http://localhost:9481/insert/opentelemetry/v1/logs
+  otlphttp/victoria-traces:
+    traces_endpoint: http://localhost:10428/insert/opentelemetry/v1/traces
+  prometheusremotewrite:
+    endpoint: "http://localhost:9090/api/v1/write"
+    tls:
+      insecure: true # 内部ネットワークのためTLS検証を無効化
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      processors: [resourcedetection]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [filelog]
+      processors: [resourcedetection]
+      exporters: [otlphttp/victoria-logs]
