@@ -230,3 +230,42 @@ firelensによってログはこれまでと同じロググループに送信さ
 | 1769338797123 |  {"resource": {"service.instance.id": "80fb9447-a242-4f73-a970-8db3b97cc0f6", "service.name": "otelcol-contrib", "service.version": "0.142.0"}, "otelcol.component.id": "debug", "otelcol.component.kind": "exporter", "otelcol.signal": "logs"}                                                                         |
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
+
+# How to transfer telemetrygen tool to a ECS task
+telemetrygenはopentelemetryのtelemetry生成ツールで、ログ、トレース、メトリクスを生成しotlpで送信することができる。このため、otlpでテレメトリを受信しているotel collectorのテストに便利なツールだが、あらかじめビルドされたバイナリが提供されておらず、自前でビルドする必要がある。
+* https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/telemetrygen#installing
+
+このため、実行中のECSタスクに、githubなどからtelemetrygenのバイナリをダウンロードすることができない。telemetrygenを含むdocker imageも提供されているが、こちらはこちらでscratchイメージから作成されているため、telemetrygenのバイナリしか含まれておらず、ECSタスクのコンテナにすることができない。よって、telemetrygenをECSタスクに導入するためには、一工夫する必要がある。
+
+## 案1. S3バケットを経由する
+ローカルでtelemetrygenのバイナリをビルドし、S3バケットに保存する。その後、ECSタスクからバイナリを取得する。telemetrygenはgo言語で書かれているので、applie siliconのmacからでもamd64アーキテクチャのシングルバイナリをビルドできる。
+### AWS CLIでダウンロード
+`aws s3 cp`コマンドを使用する。おそらくECSタスクにaws-cliは入ってないので、インターネットから取得してくる必要がある。したがって、タスクがインターネットに通信できる場合のみ利用できる。
+```
+aws s3 cp s3://your-debug-tools-bucket/my-tool /tmp/my-tool
+chmod +x /tmp/my-tool
+```
+### 署名付きURLでダウンロード
+手元の環境で署名付きURLを発行し、ECSタスク内でそのURLからダウンロードする。署名付きURLを発行できる権限がある場合に利用可能。
+**ローカルで実行**
+```
+aws s3 presign s3://your-debug-tools-bucket/my-tool --expires-in 300
+# 署名付きURLが出力される
+```
+**ECSタスク内で実行**
+```
+curl "https://..." -o /tmp/my-tool
+chmod +x /tmp/my-tool
+```
+## 案2. base64経由
+ほぼ最終手段だが、バイナリをローカルでbase64でエンコードしてコピーし、ECSタスク内で貼り付け、デコードする。
+**ローカルで実行**
+```
+base64 < my-tool | pbcopy
+```
+**ECSタスク内で実行**
+```
+cd /tmp
+echo "ここにペースト" | base64 -d > my-tool
+chmod +x my-tool
+```
